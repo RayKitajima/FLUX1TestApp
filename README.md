@@ -23,7 +23,7 @@ pip install -r requirements.txt
 FLUX.1 のモデルはサーバ起動時にダウンロードされますが、**事前にライセンスに同意しておく必要** があります。
 
 1. HaggingFace → ログイン → [settings/tokens](https://huggingface.co/settings/tokens) → Token発行
-2. HaggingFace → black-forest-labs/FLUX.1-schnell → Files & versions → Agree
+2. HaggingFace → [black-forest-labs/FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell/tree/main) → Files & versions → Agree
 3. コマンドラインから `(.venv)$ huggingface-cli login` → Tokenを入力
 
 API の起動:
