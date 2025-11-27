@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 torch
-diffusers>=0.35.0
+diffusers
 transformers
 accelerate
 safetensors
@@ -10,4 +10,5 @@ huggingface_hub
 requests
 sentencepiece
 protobuf
+peft
 charset_normalizer

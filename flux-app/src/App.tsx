@@ -15,6 +15,12 @@ type GenerateResponse = {
   width: number;
   num_inference_steps: number;
   max_sequence_length: number;
+
+  // LoRA metadata (optional, may be null / undefined)
+  active_lora?: string | null;
+  lora_model?: string | null;
+  lora_weight_name?: string | null;
+  lora_scale?: number | null;
 };
 
 function App() {
@@ -29,6 +35,11 @@ function App() {
   const [seed, setSeed] = useState<string>("");
   const [format, setFormat] = useState<"png" | "jpeg">("png");
 
+  // ---- LoRA UI state ----
+  const [loraModel, setLoraModel] = useState<string>("");
+  const [loraWeightName, setLoraWeightName] = useState<string>("");
+  const [loraScale, setLoraScale] = useState<number>(1.0);
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateResponse | null>(null);
@@ -39,7 +50,10 @@ function App() {
     setError(null);
     setResult(null);
 
-    const payload = {
+    const trimmedLoraModel = loraModel.trim();
+    const trimmedLoraWeightName = loraWeightName.trim();
+
+    const payload: Record<string, unknown> = {
       prompt,
       width: Number(width),
       height: Number(height),
@@ -49,6 +63,18 @@ function App() {
       seed: seed.trim() === "" ? null : Number(seed),
       output_format: format,
     };
+
+    // Attach LoRA fields only if user provided a model
+    if (trimmedLoraModel !== "") {
+      payload.lora_model = trimmedLoraModel;
+      if (trimmedLoraWeightName !== "") {
+        payload.lora_weight_name = trimmedLoraWeightName;
+      }
+      payload.lora_scale = Number.isNaN(Number(loraScale))
+        ? 1.0
+        : Number(loraScale);
+      // lora_adapter_name is optional; server will pick a default if not sent
+    }
 
     try {
       const response = await fetch(`${API_BASE_URL}/generate`, {
@@ -83,7 +109,7 @@ function App() {
         <h1>FLUX.1 [schnell] Text-to-Image</h1>
         <p className="subtitle">
           Fast rectified-flow generation in 1–4 steps, powered by FLUX.1
-          [schnell].
+          [schnell]. Now with optional LoRA support.
         </p>
       </header>
 
@@ -181,6 +207,49 @@ function App() {
               </select>
             </label>
 
+            {/* -------- LoRA controls -------- */}
+            <fieldset className="field lora-fieldset">
+              <legend>LoRA (optional)</legend>
+
+              <label className="field">
+                <span>LoRA model (repo or path)</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Shakker-Labs/FLUX.1-dev-LoRA-collections"
+                  value={loraModel}
+                  onChange={(e) => setLoraModel(e.target.value)}
+                />
+              </label>
+
+              <label className="field">
+                <span>LoRA weight file (optional)</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Hyper-FLUX.1-schnell-8steps-lora.safetensors"
+                  value={loraWeightName}
+                  onChange={(e) => setLoraWeightName(e.target.value)}
+                />
+              </label>
+
+              <label className="field">
+                <span>LoRA strength</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  value={loraScale}
+                  onChange={(e) => setLoraScale(Number(e.target.value))}
+                  disabled={loraModel.trim() === ""}
+                />
+              </label>
+
+              <p className="hint">
+                Leave the model field empty to disable LoRA. A scale of 1.0 uses
+                the LoRA at full strength; 0.0 is equivalent to the base model.
+              </p>
+            </fieldset>
+
             <button className="btn-primary" type="submit" disabled={isLoading}>
               {isLoading ? "Generating…" : "Generate"}
             </button>
@@ -190,7 +259,8 @@ function App() {
 
           <p className="hint">
             FLUX.1 [schnell] is timestep‑distilled and optimized for 1–4 steps
-            with guidance scale fixed at 0.
+            with guidance scale fixed at 0. LoRAs should be trained for the same
+            base checkpoint (FLUX.1‑schnell or compatible).
           </p>
         </section>
 
@@ -211,6 +281,14 @@ function App() {
                   Resolution: {result.width}×{result.height}
                 </span>
                 <span>Steps: {result.num_inference_steps}</span>
+                {result.lora_model && (
+                  <span>
+                    LoRA: {result.lora_model}
+                    {result.lora_weight_name && ` (${result.lora_weight_name})`}
+                    {typeof result.lora_scale === "number" &&
+                      `, scale ${result.lora_scale}`}
+                  </span>
+                )}
               </div>
               <div className="image-grid">
                 {result.images.map((img, idx) => (
